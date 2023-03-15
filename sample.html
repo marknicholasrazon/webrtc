@@ -2,16 +2,17 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>WebRTC Demo</title>
+    <title>WebRTC Demo - Device 1</title>
   </head>
   <body onload="start(); call();">
-    <h1>WebRTC Demo</h1>
+    <h1>WebRTC Demo - Device 1</h1>
     <div>
       <video id="localVideo" autoplay muted></video>
       <video id="remoteVideo" autoplay></video>
     </div>
 
     <script>
+      var isCaller = true;
       var localStream;
       var remoteStream;
       var localVideo = document.querySelector('#localVideo');
@@ -65,26 +66,28 @@
           remoteVideo.srcObject = event.streams[0];
         });
 
-        // Create an offer on pc1
-        pc1.createOffer(offerOptions)
-          .then(function(offer) {
-            return pc1.setLocalDescription(offer);
-          })
-          .then(function() {
-            return pc2.setRemoteDescription(pc1.localDescription);
-          })
-          .then(function() {
-            return pc2.createAnswer();
-          })
-          .then(function(answer) {
-            return pc2.setLocalDescription(answer);
-          })
-          .then(function() {
-            return pc1.setRemoteDescription(pc2.localDescription);
-          })
-          .catch(function(err) {
-            console.log('Error: ' + err);
-          });
+        if (isCaller) {
+          // Create an offer on pc1
+          pc1.createOffer(offerOptions)
+            .then(function(offer) {
+              return pc1.setLocalDescription(offer);
+            })
+            .then(function() {
+              return pc2.setRemoteDescription(pc1.localDescription);
+            })
+            .then(function() {
+              return pc2.createAnswer();
+            })
+            .then(function(answer) {
+              return pc2.setLocalDescription(answer);
+            })
+            .then(function() {
+              return pc1.setRemoteDescription(pc2.localDescription);
+            })
+            .catch(function(err) {
+              console.log('Error: ' + err);
+            });
+        }
       }
 
       // Close the RTCPeerConnection objects and release the media resources
