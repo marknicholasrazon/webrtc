@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>WebRTC Demo - Device 2</title>
+  </head>
+  <body onload="start();">
+    <h1>WebRTC Demo - Device 2</h1>
+    <div>
+      <video id="localVideo" autoplay muted></video>
+      <video id="remoteVideo" autoplay></video>
+    </div>
+
+    <script>
+      var localStream;
+      var remoteStream;
+      var localVideo = document.querySelector('#localVideo');
+      var remoteVideo = document.querySelector('#remoteVideo');
+
+      var pc1;
+      var pc2;
+      var isCaller = false; // Set to false for second device
+
+      var offerOptions = {
+        offerToReceiveAudio: 1,
+        offerToReceiveVideo: 1
+      };
+
+      // Get access to the camera and microphone
+      function start() {
+        navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+          .then(function(stream) {
+            localStream = stream;
+            localVideo.srcObject = stream;
+            if (isCaller) {
+              call();
+            } else {
+              receiveCall();
+            }
+          })
+          .catch(function(err) {
+            console.log('getUserMedia error: ' + err.name);
+          });
+      }
+
+      // Create an RTCPeerConnection object and start the call
+      function call() {
+        pc1 = new RTCPeerConnection();
+        pc2 = new RTCPeerConnection();
+
+        // Add the local stream to pc1
+        localStream.getTracks().forEach(function(track) {
+          pc1.addTrack(track, localStream);
+        });
+
+        // Set up the icecandidate event for pc1
+        pc1.addEventListener('icecandidate', function(event) {
+          if (event.candidate) {
+            pc2.addIceCandidate(event.candidate);
+          }
+        });
+
+        // Set up the icecandidate event for pc2
+        pc2.addEventListener('icecandidate', function(event) {
+          if (event.candidate) {
+            pc1.addIceCandidate(event.candidate);
+          }
+        });
+
+        // Set up the ontrack event for pc2
+        pc2.addEventListener('track', function(event) {
+          remoteVideo.srcObject = event.streams[0];
+        });
+
+        // Create an offer on pc1
+        pc1.createOffer(offerOptions)
+          .then(function(offer) {
+            return pc1.setLocalDescription(offer);
+          })
+          .then(function() {
+            return pc2.setRemoteDescription(pc1.localDescription);
+          })
+          .then(function() {
+            return pc2.createAnswer();
+          })
+          .then(function(answer) {
+            return pc2.setLocalDescription(answer);
+          })
+          .then(function() {
+            return pc1.setRemoteDescription(pc2.localDescription);
+          })
+          .catch(function(err) {
+            console.log('Error: ' + err);
+          });
+      }
+
+      // Receive an incoming call
+      function receiveCall() {
+        pc1 = new RTCPeerConnection();
+        pc2 = new RTCPeerConnection();
+
+        // Set up the ontrack event for pc2
+        pc2.addEventListener('track', function(event) {
+          remoteVideo.srcObject = event.streams[0];
+        });
+
+        // Set up the icecandidate event for pc1
+        pc1.addEventListener('icecandidate', function(event) {
+          if (event.candidate) {
+            pc2.addIceCandidate(event.candidate);
+          }
+        });
+
+        // Set up the onicecandidate event for pc2
+        pc2.addEventListener('icecandidate', function(event) {
+          if (event.candidate) {
+            pc1.addIceCandidate(event.candidate)
+              .then(() => {
+                console.log('Added ice candidate to pc1');
+              })
+              .catch((e) => {
+                console.error('Error adding ice candidate to pc1', e);
+              });
+          }
+        });
+
+        // Set up the onaddstream event for pc2
+        pc2.onaddstream = function(event) {
+          remoteVideo.srcObject = event.stream;
+        };
+
+        // Create an answer on pc2
+        pc2.createAnswer()
+          .then(function(answer) {
+            return pc2.setLocalDescription(answer);
+          })
+          .then(function() {
+            return pc1.setRemoteDescription(pc2.localDescription);
+          })
+          .catch(function(err) {
+            console.log('Error: ' + err);
+          });
+        }
+      </script>
+    </body>
+  </html>
+
