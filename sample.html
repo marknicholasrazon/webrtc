@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>WebRTC Demo</title>
+  </head>
+  <body onload="start(); call();">
+    <h1>WebRTC Demo</h1>
+    <div>
+      <video id="localVideo" autoplay muted></video>
+      <video id="remoteVideo" autoplay></video>
+    </div>
+
+    <script>
+      var localStream;
+      var remoteStream;
+      var localVideo = document.querySelector('#localVideo');
+      var remoteVideo = document.querySelector('#remoteVideo');
+
+      var pc1;
+      var pc2;
+      var offerOptions = {
+        offerToReceiveAudio: 1,
+        offerToReceiveVideo: 1
+      };
+
+      // Get access to the camera and microphone
+      function start() {
+        navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+          .then(function(stream) {
+            localStream = stream;
+            localVideo.srcObject = stream;
+          })
+          .catch(function(err) {
+            console.log('getUserMedia error: ' + err.name);
+          });
+      }
+
+      // Create an RTCPeerConnection object and start the call
+      function call() {
+        pc1 = new RTCPeerConnection();
+        pc2 = new RTCPeerConnection();
+
+        // Add the local stream to pc1
+        localStream.getTracks().forEach(function(track) {
+          pc1.addTrack(track, localStream);
+        });
+
+        // Set up the icecandidate event for pc1
+        pc1.addEventListener('icecandidate', function(event) {
+          if (event.candidate) {
+            pc2.addIceCandidate(event.candidate);
+          }
+        });
+
+        // Set up the icecandidate event for pc2
+        pc2.addEventListener('icecandidate', function(event) {
+          if (event.candidate) {
+            pc1.addIceCandidate(event.candidate);
+          }
+        });
+
+        // Set up the ontrack event for pc2
+        pc2.addEventListener('track', function(event) {
+          remoteVideo.srcObject = event.streams[0];
+        });
+
+        // Create an offer on pc1
+        pc1.createOffer(offerOptions)
+          .then(function(offer) {
+            return pc1.setLocalDescription(offer);
+          })
+          .then(function() {
+            return pc2.setRemoteDescription(pc1.localDescription);
+          })
+          .then(function() {
+            return pc2.createAnswer();
+          })
+          .then(function(answer) {
+            return pc2.setLocalDescription(answer);
+          })
+          .then(function() {
+            return pc1.setRemoteDescription(pc2.localDescription);
+          })
+          .catch(function(err) {
+            console.log('Error: ' + err);
+          });
+      }
+
+      // Close the RTCPeerConnection objects and release the media resources
+      function hangup() {
+        pc1.close();
+        pc2.close();
+        localStream.getTracks().forEach(function(track) {
+          track.stop();
+        });
+        localVideo.srcObject = null;
+        remoteVideo.srcObject = null;
+      }
+
+    </script>
+  </body>
+</html>
