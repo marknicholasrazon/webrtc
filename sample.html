@@ -29,6 +29,10 @@
       remoteVideo.srcObject = event.stream;
     };
 
+    function requestCameraPermission() {
+      signalingChannel.send(JSON.stringify({ type: 'camera_permission_request' }));
+    }
+
     // Start call
     function startCall() {
       navigator.mediaDevices.getUserMedia({ audio: true, video: true })
